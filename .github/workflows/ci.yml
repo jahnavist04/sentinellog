@@ -1,0 +1,99 @@
+name: SentinelLog CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  test-collector:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install collector dependencies
+        run: |
+          cd collector
+          pip install psycopg2-binary
+
+      - name: Check collector syntax
+        run: |
+          cd collector
+          python -m py_compile database.py
+          python -m py_compile server.py
+          echo "Collector syntax OK"
+
+  test-services:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Check services syntax
+        run: |
+          cd services
+          python -m py_compile service.py
+          echo "Services syntax OK"
+
+  test-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies
+        run: |
+          cd dashboard/backend
+          pip install flask flask-cors psycopg2-binary
+
+      - name: Check backend syntax
+        run: |
+          cd dashboard/backend
+          python -m py_compile app.py
+          echo "Backend syntax OK"
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install frontend dependencies
+        run: |
+          cd dashboard/frontend
+          npm install
+
+      - name: Build frontend
+        run: |
+          cd dashboard/frontend
+          npm run build
+          echo "Frontend build OK"
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: [test-collector, test-services, test-backend, test-frontend]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build all Docker images
+        run: |
+          docker compose build
+          echo "All Docker images built successfully"

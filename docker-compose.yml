@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: sentinellog-db
+    environment:
+      POSTGRES_DB: sentinellog
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - sentinel-network
+
+  collector:
+    build: ./collector
+    container_name: sentinellog-collector
+    depends_on:
+      - postgres
+    environment:
+      DB_HOST: postgres
+      DB_NAME: sentinellog
+      DB_USER: sentinel
+      DB_PASSWORD: sentinel123
+    ports:
+      - "9999:9999"
+    networks:
+      - sentinel-network
+
+  service_a:
+    build: ./services
+    container_name: sentinellog-service-a
+    environment:
+      SERVICE_NAME: ServiceA
+      COLLECTOR_HOST: collector
+      COLLECTOR_PORT: 9999
+    depends_on:
+      - collector
+    networks:
+      - sentinel-network
+
+  service_b:
+    build: ./services
+    container_name: sentinellog-service-b
+    environment:
+      SERVICE_NAME: ServiceB
+      COLLECTOR_HOST: collector
+      COLLECTOR_PORT: 9999
+    depends_on:
+      - collector
+    networks:
+      - sentinel-network
+
+  service_c:
+    build: ./services
+    container_name: sentinellog-service-c
+    environment:
+      SERVICE_NAME: ServiceC
+      COLLECTOR_HOST: collector
+      COLLECTOR_PORT: 9999
+    depends_on:
+      - collector
+    networks:
+      - sentinel-network
+
+  backend:
+    build: ./dashboard/backend
+    container_name: sentinellog-backend
+    depends_on:
+      - postgres
+    environment:
+      DB_HOST: postgres
+      DB_NAME: sentinellog
+      DB_USER: sentinel
+      DB_PASSWORD: sentinel123
+    ports:
+      - "5000:5000"
+    networks:
+      - sentinel-network
+
+  frontend:
+    build: ./dashboard/frontend
+    container_name: sentinellog-frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    networks:
+      - sentinel-network
+
+networks:
+  sentinel-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
